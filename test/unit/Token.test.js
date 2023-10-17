@@ -8,7 +8,7 @@ const { developmentChains } = require("../../helper-hardhat-config");
       let token;
       let owner;
       let account;
-      const addressZero = "0x0000000000000000000000000000000000000000";
+      const addressZero = ethers.ZeroAddress;
       const amount = 100;
 
       beforeEach(async () => {
@@ -22,8 +22,6 @@ const { developmentChains } = require("../../helper-hardhat-config");
 
       describe("constructor", () => {
         it("Total Supply should equal owner balance", async () => {
-          token = await ethers.deployContract("Token");
-
           let balance = await token.balanceOf(owner.address);
           const totalSupply = await token.totalSupply();
 
