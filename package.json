@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.0",
-    "deploy": "^1.0.3"
+    "deploy": "^1.0.3",
+    "flat": "5.0.1"
   }
 }
