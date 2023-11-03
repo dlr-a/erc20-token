@@ -38,9 +38,9 @@ const { developmentChains } = require("../../helper-hardhat-config");
 
       describe("Only owner", () => {
         it("pause -account", async () => {
-          await expect(token.connect(account).pause()).to.be.revertedWith(
-            "Ownable: caller is not the owner"
-          );
+          await expect(token.connect(account).pause())
+            .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
+            .withArgs(account.address);
         });
 
         it("pause -owner", async () => {
@@ -49,9 +49,9 @@ const { developmentChains } = require("../../helper-hardhat-config");
         });
 
         it("unpause -account", async () => {
-          await expect(token.connect(account).unpause()).to.be.revertedWith(
-            "Ownable: caller is not the owner"
-          );
+          await expect(token.connect(account).unpause())
+            .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
+            .withArgs(account.address);
         });
 
         it("unpause -owner", async () => {
@@ -68,9 +68,9 @@ const { developmentChains } = require("../../helper-hardhat-config");
         });
 
         it("only owner can mint", async () => {
-          await expect(
-            token.connect(account).mint(account.address, amount)
-          ).to.be.revertedWith("Ownable: caller is not the owner");
+          await expect(token.connect(account).mint(account.address, amount))
+            .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
+            .withArgs(account.address);
         });
       });
 
@@ -98,9 +98,9 @@ const { developmentChains } = require("../../helper-hardhat-config");
           if (ownerBalance >= exceedsAmount) {
             token.connect(owner).burn(exceedsAmount);
           } else {
-            await expect(
-              token.connect(owner).burn(exceedsAmount)
-            ).to.be.revertedWith("ERC20: burn amount exceeds balance");
+            await expect(token.connect(owner).burn(exceedsAmount))
+              .to.be.revertedWithCustomError(token, "ERC20InsufficientBalance")
+              .withArgs(owner.address, ownerBalance, exceedsAmount);
           }
         });
 
@@ -134,9 +134,13 @@ const { developmentChains } = require("../../helper-hardhat-config");
         });
 
         it("burnFrom should send error", async () => {
-          await expect(
-            token.connect(account).burnFrom(owner.address, amount)
-          ).to.be.revertedWith("ERC20: insufficient allowance");
+          const allowance = await token.allowance(
+            owner.address,
+            account.address
+          );
+          await expect(token.connect(account).burnFrom(owner.address, amount))
+            .to.be.revertedWithCustomError(token, "ERC20InsufficientAllowance")
+            .withArgs(account.address, allowance, amount);
         });
       });
 
@@ -159,47 +163,14 @@ const { developmentChains } = require("../../helper-hardhat-config");
           await token.connect(owner).approve(account.address, amount);
           assert.notEqual(account.address, addressZero);
         });
-
-        it("decrease allowance", async () => {
-          await token.connect(owner).approve(account.address, amount);
-          const beforeAllowance = await token.allowance(
-            owner.address,
-            account.address
-          );
-          const decrease = 50;
-          await token
-            .connect(owner)
-            .decreaseAllowance(account.address, decrease);
-          const allowance = await token.allowance(
-            owner.address,
-            account.address
-          );
-          assert.equal(amount - decrease, allowance);
-        });
-
-        it("increase allowance", async () => {
-          await token.connect(owner).approve(account.address, amount);
-          const beforeAllowance = await token.allowance(
-            owner.address,
-            account.address
-          );
-          const increase = 50;
-          await token
-            .connect(owner)
-            .increaseAllowance(account.address, increase);
-          const allowance = await token.allowance(
-            owner.address,
-            account.address
-          );
-          assert.equal(amount + increase, allowance);
-        });
       });
 
       describe("cappable", () => {
         it("cant mint too much", async () => {
+          const maxSupply = await token.cap();
           await expect(
-            token.connect(owner).mint(owner.address, 999_001)
-          ).to.be.revertedWith("Max number of tokens minted");
+            token.connect(owner).mint(owner.address, Number(maxSupply) + 1)
+          ).to.be.revertedWithCustomError(token, "ERC20ExceededCap");
         });
 
         it("mint", async () => {
@@ -218,28 +189,28 @@ const { developmentChains } = require("../../helper-hardhat-config");
           assert.equal(newOwner, account.address);
         });
         it("new owner cant be address zero", async () => {
-          await expect(
-            token.connect(owner).transferOwnership(addressZero)
-          ).to.be.revertedWith("Ownable: new owner is the zero address");
+          await expect(token.connect(owner).transferOwnership(addressZero))
+            .to.be.revertedWithCustomError(token, "OwnableInvalidOwner")
+            .withArgs(addressZero);
         });
 
         it("caller should be owner", async () => {
-          await expect(
-            token.connect(account).transferOwnership(addressZero)
-          ).to.be.revertedWith("Ownable: caller is not the owner");
+          await expect(token.connect(account).transferOwnership(addressZero))
+            .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
+            .withArgs(account.address);
         });
 
         it("renounceOwnership works", async () => {
           await token.connect(owner).renounceOwnership();
-          await expect(token.connect(owner).pause()).to.be.revertedWith(
-            "Ownable: caller is not the owner"
-          );
+          await expect(token.connect(owner).pause())
+            .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
+            .withArgs(owner.address);
         });
 
         it("renounceOwnership should send error", async () => {
-          await expect(
-            token.connect(account).renounceOwnership()
-          ).to.be.revertedWith("Ownable: caller is not the owner");
+          await expect(token.connect(account).renounceOwnership())
+            .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
+            .withArgs(account.address);
         });
       });
 
@@ -278,9 +249,9 @@ const { developmentChains } = require("../../helper-hardhat-config");
           if (balance >= amount) {
             await token.connect(account).transfer(owner.address, amount);
           } else {
-            await expect(
-              token.connect(account).transfer(owner.address, amount)
-            ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
+            await expect(token.connect(account).transfer(owner.address, amount))
+              .to.be.revertedWithCustomError(token, "ERC20InsufficientBalance")
+              .withArgs(account.address, balance, amount);
           }
         });
       });
@@ -328,18 +299,24 @@ const { developmentChains } = require("../../helper-hardhat-config");
 
         it("amount can't be more than allowance", async () => {
           await token.connect(owner).approve(account.address, amount);
+          const allowance = await token.allowance(
+            owner.address,
+            account.address
+          );
           const exceedsAmount = 100000;
           await expect(
             token
               .connect(account)
               .transferFrom(owner.address, account.address, exceedsAmount)
-          ).to.be.revertedWith("ERC20: insufficient allowance");
+          )
+            .to.be.revertedWithCustomError(token, "ERC20InsufficientAllowance")
+            .withArgs(account.address, allowance, exceedsAmount);
         });
 
         it("amount should not bigger than balance", async () => {
           const exceedsAmount = 10000;
           await token.connect(owner).approve(account.address, exceedsAmount);
-          const balance = await token.balanceOf(account.address);
+          const balance = await token.balanceOf(owner.address);
 
           if (balance >= exceedsAmount) {
             await token
@@ -350,7 +327,9 @@ const { developmentChains } = require("../../helper-hardhat-config");
               token
                 .connect(account)
                 .transferFrom(owner.address, account.address, exceedsAmount)
-            ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
+            )
+              .to.be.revertedWithCustomError(token, "ERC20InsufficientBalance")
+              .withArgs(owner.address, balance, exceedsAmount);
           }
         });
       });

@@ -8,7 +8,6 @@ developmentChains.includes(network.name)
       let token;
       let owner;
       let account;
-      let deployer;
       const amount = ethers.parseEther("0.0000000000000001");
 
       beforeEach(async () => {
@@ -18,26 +17,23 @@ developmentChains.includes(network.name)
         account = account2;
 
         const Token = await ethers.getContractFactory("Token");
-        token = await Token.attach(
-          "0x59c37C6Dca1a5FB2A852AaF79746F853907cA9F6"
-        );
-        const address = await token.getAddress();
+        token = Token.attach("0x6bC61842C5B45cde649A1a3761E79E80488E5b52");
       });
 
       it("Staging Test", async () => {
         //PAUSE
-        const paused = await token.connect(owner).pause();
+        const paused = await token.pause();
         await paused.wait();
-        expect(await token.connect(owner).paused()).to.be.true;
+        expect(await token.paused()).to.be.true;
 
         //UNPAUSE
-        const unpaused = await token.connect(owner).unpause();
+        const unpaused = await token.unpause();
         await unpaused.wait();
-        expect(await token.connect(owner).paused()).to.be.false;
+        expect(await token.paused()).to.be.false;
 
         //MINT
         const beforeTotalSupply = await token.totalSupply();
-        const mint = await token.connect(owner).mint(owner.address, amount);
+        const mint = await token.mint(owner.address, amount);
         await mint.wait();
         const afterTotalSupply = await token.totalSupply();
         assert.equal(
@@ -47,7 +43,7 @@ developmentChains.includes(network.name)
 
         //BURN
         const beforeTotalSupplyBurn = await token.totalSupply();
-        const burn = await token.connect(owner).burn(amount);
+        const burn = await token.burn(amount);
         await burn.wait();
         const afterTotalSupplyBurn = await token.totalSupply();
         assert.equal(
@@ -56,49 +52,15 @@ developmentChains.includes(network.name)
         );
 
         //APPROVE
-        const approve = await token
-          .connect(owner)
-          .approve(account.address, amount);
+        const approve = await token.approve(account.address, amount);
         await approve.wait();
         const allowance = await token.allowance(owner.address, account.address);
         assert.equal(amount, allowance);
 
-        //DECREASEALLOWANCE
-        const decreaseAmount = 50;
-        const decrese = await token
-          .connect(owner)
-          .decreaseAllowance(account.address, decreaseAmount);
-        await decrese.wait();
-        const allowanceDecrease = await token.allowance(
-          owner.address,
-          account.address
-        );
-        assert.equal(
-          Number(amount) - Number(decreaseAmount),
-          Number(allowanceDecrease)
-        );
-
-        //INCREASEALLOWANCE
-        const increaseAmount = 250;
-        const increase = await token
-          .connect(owner)
-          .increaseAllowance(account.address, increaseAmount);
-        await increase.wait();
-        const allowanceIncrease = await token.allowance(
-          owner.address,
-          account.address
-        );
-        assert.equal(
-          Number(allowanceDecrease) + Number(increaseAmount),
-          Number(allowanceIncrease)
-        );
-
         //TRANSFER
         const beforeAccountBalance = await token.balanceOf(account.address);
         const beforeOwnerBalance = await token.balanceOf(owner.address);
-        const transfer = await token
-          .connect(owner)
-          .transfer(account.address, amount);
+        const transfer = await token.transfer(account.address, amount);
         await transfer.wait();
         const afterAccountBalance = await token.balanceOf(account.address);
         const afterOwnerBalance = await token.balanceOf(owner.address);
@@ -130,6 +92,8 @@ developmentChains.includes(network.name)
         );
 
         //BURNFROM
+        const approvee = await token.approve(account.address, amount);
+        await approvee.wait();
         const beforeBurnFromAllowance = await token.allowance(
           owner.address,
           account.address
@@ -139,6 +103,7 @@ developmentChains.includes(network.name)
           .connect(account)
           .burnFrom(owner.address, amount);
         await burnFrom.wait();
+
         const afterBurnFromAllowance = await token.allowance(
           owner.address,
           account.address
@@ -154,9 +119,9 @@ developmentChains.includes(network.name)
         );
 
         //TRANSFEROWNERSHIP
-        const transferOwnership = await token
-          .connect(owner)
-          .transferOwnership(account.address);
+        const transferOwnership = await token.transferOwnership(
+          account.address
+        );
         await transferOwnership.wait();
         const newOwnerAccount = await token.owner();
         assert.equal(newOwnerAccount, account.address);
